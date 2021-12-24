@@ -358,7 +358,7 @@
             $ul.append($emptyLi);
           }
 
-          $document.find(_clickedElement).append($ul);
+          $document.find('body').append($ul);
 
           doAfterAllPromises(params);
 
@@ -440,8 +440,8 @@
             $ul.css({
               display: 'block',
               position: 'absolute',
-              left: _clickedElement.position().left + 'px',
-              top: _clickedElement.position().top + 'px'
+              left: leftCoordinate + 'px',
+              top: topCoordinate + 'px'
             });
           });
 
