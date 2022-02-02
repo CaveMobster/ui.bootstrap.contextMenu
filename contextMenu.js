@@ -23,8 +23,8 @@
       // Triggers right after any context menu is opened
       ContextMenuOpened: 'context-menu-opened'
     })
-    .directive('contextMenu', ['$rootScope', 'ContextMenuEvents', '$parse', '$q', 'CustomService', '$sce', '$document', '$window', '$compile',
-      function ($rootScope, ContextMenuEvents, $parse, $q, custom, $sce, $document, $window, $compile) {
+    .directive('contextMenu', ['$rootScope', 'ContextMenuEvents', '$q', 'CustomService', '$document', '$window', '$compile',
+      function ($rootScope, ContextMenuEvents, $q, custom, $document, $window, $compile) {
 
         var _contextMenus = [];
         // Contains the element that was clicked to show the context menu
@@ -73,7 +73,7 @@
 
             $a.css($anchorStyle);
             $a.addClass('dropdown-item');
-            $a.attr({ tabindex: '-1', href: '#' });
+            $a.attr({ href: '#' });
 
             var textParam = item.text || item[0];
             var text = DEFAULT_ITEM_TEXT;
@@ -138,7 +138,6 @@
           // if first item in the item array is a function then invoke .call()
           // if first item is a string, then text should be the string.
 
-          var text = DEFAULT_ITEM_TEXT;
           var currItemParam = angular.extend({}, params);
           var item = params.item;
           var enabled = item.enabled === undefined ? item[2] : item.enabled;
@@ -180,7 +179,7 @@
                */
               /// adding the original event in the object to use the attributes of the mouse over event in the promises
               var ev = {
-                pageX: orientation === 'left' ? event.pageX - $ul[0].offsetWidth + 1 : event.pageX + $ul[0].offsetWidth - 1,
+                pageX: orientation === 'left' ? event.pageX - $ul[0].offsetWidth + 1 : event.pageY + $ul[0].offsetWidth - 1,
                 pageY: $ul[0].offsetTop + $li[0].offsetTop - 3,
                 // eslint-disable-next-line angular/window-service
                 view: event.view || window,
@@ -210,6 +209,12 @@
               });
             };
 
+            $li.on('keypress', function ($event) {
+              if ($event.key === 'Escape') {
+                removeAllContextMenus();
+              }
+            });
+
             $li.on('click', function ($event) {
               if($event.which == 1) {
                 $event.preventDefault();
@@ -237,7 +242,7 @@
               }
             });
 
-            $li.on('mouseover', function ($event) {
+            $li.on('mouseover keyup', function ($event) {
               $scope.$apply(function () {
                 if (nestedMenu) {
                   openNestedMenu($event);
@@ -299,12 +304,8 @@
           /// <summary>Render context menu recursively.</summary>
 
           // Destructuring:
-          var $scope = params.$scope;
           var event = params.event;
           var options = params.options;
-          var modelValue = params.modelValue;
-          var level = params.level;
-          var customClass = params.customClass;
 
           // Initialize the container. This will be passed around
           var $ul = initContextMenuContainer(params);
@@ -358,7 +359,14 @@
             $ul.append($emptyLi);
           }
 
-          $document.find('body').append($ul);
+          if (event.type === 'contextmenu') {
+            $document.find('body').append($ul);
+          } else if (event.type === 'click' || event.type === 'keypress') {
+            $document.find(_clickedElement).css({position: 'relative'}).append($ul);
+          } else {
+            $(event.event.currentTarget).closest('.dropdown-menu').append($ul);
+          }
+
 
           doAfterAllPromises(params);
 
@@ -379,69 +387,94 @@
           // Desctructuring:
           var $ul = params.$ul;
           var $promises = params.$promises;
-          var level = params.level;
           var event = params.event;
           var leftOriented = String(params.orientation).toLowerCase() === 'left';
 
           $q.all($promises).then(function () {
-            var topCoordinate  = event.pageY;
-            var menuHeight = angular.element($ul[0]).prop('offsetHeight');
-            var winHeight = $window.pageYOffset + event.view.innerHeight;
+            var top = "";
+            var left = "";
 
-            /// the 20 pixels in second condition are considering the browser status bar that sometimes overrides the element
-            if (topCoordinate > menuHeight && winHeight - topCoordinate < menuHeight + 20) {
-              topCoordinate = event.pageY - menuHeight;
-              /// If the element is a nested menu, adds the height of the parent li to the topCoordinate to align with the parent
-              if(level && level > 0) {
-                topCoordinate += event.event.currentTarget.offsetHeight;
-              }
-            } else if(winHeight <= menuHeight) {
-              // If it really can't fit, reset the height of the menu to one that will fit
-              angular.element($ul[0]).css({ 'height': winHeight - 5, 'overflow-y': 'scroll' });
-              // ...then set the topCoordinate height to 0 so the menu starts from the top
-              topCoordinate = 0;
-            } else if(winHeight - topCoordinate < menuHeight) {
-              var reduceThresholdY = 5;
-              if(topCoordinate < reduceThresholdY) {
-                reduceThresholdY = topCoordinate;
-              }
-              topCoordinate = winHeight - menuHeight - reduceThresholdY;
-            }
+            if (event.type === 'click' || event.type === 'keypress') {
+              var elementPosition = event.currentTarget.getBoundingClientRect();
+              var windowHeight = $window.pageYOffset + event.view.innerHeight;
+              var atBottom = elementPosition.bottom + $ul.height() > windowHeight;
 
-            var leftCoordinate = event.pageX;
-            var menuWidth = angular.element($ul[0]).prop('offsetWidth');
-            var winWidth = event.view.innerWidth + window.pageXOffset;
-            var padding = 5;
+              top = atBottom ? 0 - $ul.height() + 'px' : "50%";
+              left = leftOriented ? 0 - $ul.width() + 'px' : "50%";
+            } else if (event.type === 'contextmenu') {
+              var topCoordinate  = event.pageY;
+              var menuHeight = angular.element($ul[0]).prop('offsetHeight');
+              var winHeight = $window.pageYOffset + event.view.innerHeight;
 
-            if (leftOriented) {
-              if (winWidth - leftCoordinate > menuWidth && leftCoordinate < menuWidth + padding) {
-                leftCoordinate = padding;
-              } else if (leftCoordinate < menuWidth) {
-                var reduceThresholdX = 5;
-                if (winWidth - leftCoordinate < reduceThresholdX + padding) {
-                  reduceThresholdX = winWidth - leftCoordinate + padding;
+                /// the 20 pixels in second condition are considering the browser status bar that sometimes overrides the element
+                if (topCoordinate > menuHeight && winHeight - topCoordinate < menuHeight + 20) {
+                  topCoordinate = topCoordinate - menuHeight;
+                  /// If the element is a nested menu, adds the height of the parent li to the topCoordinate to align with the parent
+
+                } else if(winHeight <= menuHeight) {
+                  // If it really can't fit, reset the height of the menu to one that will fit
+                  angular.element($ul[0]).css({ 'height': winHeight - 5, 'overflow-y': 'scroll' });
+                  // ...then set the topCoordinate height to 0 so the menu starts from the top
+                  topCoordinate = 0;
+                } else if(winHeight - topCoordinate < menuHeight) {
+                  var reduceThresholdY = 5;
+                  if(topCoordinate < reduceThresholdY) {
+                    reduceThresholdY = topCoordinate;
+                  }
+                  topCoordinate = winHeight - menuHeight - reduceThresholdY;
                 }
-                leftCoordinate = menuWidth + reduceThresholdX + padding;
+
+              var leftCoordinate = event.pageX;
+              var menuWidth = angular.element($ul[0]).prop('offsetWidth');
+              var winWidth = event.view.innerWidth + window.pageXOffset;
+              var padding = 5;
+
+              if (leftOriented) {
+                if (winWidth - leftCoordinate > menuWidth && leftCoordinate < menuWidth + padding) {
+                  leftCoordinate = padding;
+                } else if (leftCoordinate < menuWidth) {
+                  var reduceThresholdX = 5;
+                  if (winWidth - leftCoordinate < reduceThresholdX + padding) {
+                    reduceThresholdX = winWidth - leftCoordinate + padding;
+                  }
+                  leftCoordinate = menuWidth + reduceThresholdX + padding;
+                } else {
+                  leftCoordinate = leftCoordinate - menuWidth;
+                }
               } else {
-                leftCoordinate = leftCoordinate - menuWidth;
-              }
-            } else {
-              if (leftCoordinate > menuWidth && winWidth - leftCoordinate - padding < menuWidth) {
-                leftCoordinate = winWidth - menuWidth - padding;
-              } else if(winWidth - leftCoordinate < menuWidth) {
-                var reduceThresholdX = 5;
-                if(leftCoordinate < reduceThresholdX + padding) {
-                  reduceThresholdX = leftCoordinate + padding;
+                if (leftCoordinate > menuWidth && winWidth - leftCoordinate - padding < menuWidth) {
+                  leftCoordinate = winWidth - menuWidth - padding;
+
+
+                } else if(winWidth - leftCoordinate < menuWidth) {
+                  var reduceThresholdX = 5;
+                  if(leftCoordinate < reduceThresholdX + padding) {
+                    reduceThresholdX = leftCoordinate + padding;
+                  }
+                  leftCoordinate = winWidth - menuWidth - reduceThresholdX - padding;
                 }
-                leftCoordinate = winWidth - menuWidth - reduceThresholdX - padding;
+              }
+
+              left = leftCoordinate + "px";
+              top = topCoordinate + "px";
+            } else {
+              var subMenu = angular.element($ul[0]);
+              var parentMenu = event.event.currentTarget;
+
+              left = 0 - subMenu.prop('offsetWidth') - 2;
+              top = parentMenu.offsetParent.offsetHeight - subMenu.prop('offsetHeight') - 5;
+
+              if (!leftOriented) {
+                left = parentMenu.offsetWidth + parentMenu.offsetLeft + 2;
+                top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight') + 5;
               }
             }
 
             $ul.css({
               display: 'block',
               position: 'absolute',
-              left: leftCoordinate + 'px',
-              top: topCoordinate + 'px'
+              left: left,
+              top: top
             });
           });
 
@@ -497,6 +530,12 @@
           removeAllContextMenus(e);
         }
 
+        function removeOnEscape(e) {
+          if (e.key === 'Escape') {
+            removeAllContextMenus(e);
+          }
+        }
+
         function removeOnOutsideClickEvent(e) {
 
           var $curr = $(e.target);
@@ -518,6 +557,7 @@
         function removeAllContextMenus(e) {
           $document.find('body').off('mousedown touchstart', removeOnOutsideClickEvent);
           $document.off('scroll', removeOnScrollEvent);
+          $(_clickedElement).off('keydown', removeOnEscape);
           $(_clickedElement).removeClass('context');
           removeContextMenus();
           $rootScope.$broadcast('');
@@ -571,12 +611,15 @@
           if(attrs.contextMenuOn && typeof(attrs.contextMenuOn) === 'string'){
             openMenuEvents = attrs.contextMenuOn.split(',');
           }
-
           angular.forEach(openMenuEvents, function (openMenuEvent) {
             element.on(openMenuEvent.trim(), function (event) {
               // Cleanup any leftover contextmenus(there are cases with longpress on touch where we
               // still see multiple contextmenus)
               removeAllContextMenus();
+
+              if (event.key === 'Enter' &&  _contextMenus.length > 0) {
+                return false;
+              }
 
               if(!attrs.allowEventPropagation) {
                 event.stopPropagation();
@@ -592,6 +635,8 @@
               $document.find('body').on('mousedown touchstart', removeOnOutsideClickEvent);
               // Remove the menu when the scroll moves
               $document.on('scroll', removeOnScrollEvent);
+
+              $(event.currentTarget).on('keydown', removeOnEscape);
 
               _clickedElement = event.currentTarget;
               $(_clickedElement).addClass('context');
