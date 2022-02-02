@@ -61,6 +61,11 @@
           } else {
 
             var $a = $('<a>');
+            if (!nestedMenu) {
+              $a.attr({'role': 'menuitem'});
+            }
+
+
             var $anchorStyle = {};
 
             if (leftOriented) {
@@ -111,6 +116,11 @@
             });
 
             optionText = $a;
+          }
+
+          if (nestedMenu) {
+            $li.attr({'aria-haspopup': 'menu'});
+            $li.addClass('dropdown-submenu');
           }
 
           $li.append(optionText);
@@ -209,11 +219,24 @@
               });
             };
 
-            $li.on('keypress', function ($event) {
+            $li.on('keyup', function ($event) {
               if ($event.key === 'Escape') {
                 removeAllContextMenus();
               }
             });
+
+            $li.find('a').on('keydown', function ($event) {
+              if (nestedMenu && $event.key === 'Enter') {
+                $event.preventDefault();
+
+                if ($li.find('ul').length) {
+                  removeContextMenus(level + 1);
+                } else {
+                  openNestedMenu($event);
+                }
+              }
+            });
+
 
             $li.on('click', function ($event) {
               if($event.which == 1) {
@@ -242,11 +265,11 @@
               }
             });
 
-            $li.on('mouseover keyup', function ($event) {
+            $li.find("a").on('mouseover', function ($event) {
               $scope.$apply(function () {
                 if (nestedMenu) {
                   openNestedMenu($event);
-                } else {
+                } else if (!$li.closest('.dropdown-submenu').length) {
                   removeContextMenus(level + 1);
                 }
               });
@@ -364,7 +387,7 @@
           } else if (event.type === 'click' || event.type === 'keypress') {
             $document.find(_clickedElement).parent().css({position: 'relative'}).append($ul);
           } else {
-            $(event.event.currentTarget).closest('.dropdown-menu').append($ul);
+            $(event.event.currentTarget).closest('.dropdown-submenu').append($ul);
           }
 
 
@@ -432,6 +455,7 @@
               if (leftOriented) {
                 if (winWidth - leftCoordinate > menuWidth && leftCoordinate < menuWidth + padding) {
                   leftCoordinate = padding;
+
                 } else if (leftCoordinate < menuWidth) {
                   var reduceThresholdX = 5;
                   if (winWidth - leftCoordinate < reduceThresholdX + padding) {
@@ -445,12 +469,13 @@
                 if (leftCoordinate > menuWidth && winWidth - leftCoordinate - padding < menuWidth) {
                   leftCoordinate = winWidth - menuWidth - padding;
 
-
                 } else if(winWidth - leftCoordinate < menuWidth) {
                   var reduceThresholdX = 5;
+
                   if(leftCoordinate < reduceThresholdX + padding) {
                     reduceThresholdX = leftCoordinate + padding;
                   }
+
                   leftCoordinate = winWidth - menuWidth - reduceThresholdX - padding;
                 }
               }
@@ -460,13 +485,14 @@
             } else {
               var subMenu = angular.element($ul[0]);
               var parentMenu = event.event.currentTarget;
+              var parentPosition = parentMenu.getBoundingClientRect();
+              var winWidth = event.view.innerWidth + window.pageXOffset;
 
-              left = 0 - subMenu.prop('offsetWidth') - 2;
-              top = parentMenu.offsetParent.offsetHeight - subMenu.prop('offsetHeight') - 5;
+              top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight') + 5;
+              left = parentMenu.offsetWidth + parentMenu.offsetLeft + 2;
 
-              if (!leftOriented) {
-                left = parentMenu.offsetWidth + parentMenu.offsetLeft + 2;
-                top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight') + 5;
+              if (winWidth - parentPosition.right < subMenu.prop('offsetWidth') || leftOriented) {
+                left = 0 - subMenu.prop('offsetWidth') - 2;
               }
             }
 
@@ -497,8 +523,7 @@
             display: 'block',
             position: 'absolute',
             left: params.event.pageX + 'px',
-            top: params.event.pageY + 'px',
-            'z-index': 10000
+            top: params.event.pageY + 'px'
           });
 
           if(customClass) { $ul.addClass(customClass); }
