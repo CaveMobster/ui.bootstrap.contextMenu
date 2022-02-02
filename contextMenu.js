@@ -362,7 +362,7 @@
           if (event.type === 'contextmenu') {
             $document.find('body').append($ul);
           } else if (event.type === 'click' || event.type === 'keypress') {
-            $document.find(_clickedElement).css({position: 'relative'}).append($ul);
+            $document.find(_clickedElement).parent().css({position: 'relative'}).append($ul);
           } else {
             $(event.event.currentTarget).closest('.dropdown-menu').append($ul);
           }
@@ -575,7 +575,6 @@
          *  neither a boolean nor function. True by default.
          */
         function resolveBoolOrFunc(a, params, defaultValue) {
-          var item = params.item;
           var $scope = params.$scope;
           var event = params.event;
           var modelValue = params.modelValue;
