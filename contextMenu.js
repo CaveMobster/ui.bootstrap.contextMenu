@@ -385,7 +385,7 @@
           if (event.type === 'contextmenu') {
             $document.find('body').append($ul);
           } else if (event.type === 'click' || event.type === 'keypress') {
-            $document.find(_clickedElement).parent().css({position: 'relative'}).append($ul);
+            $document.find(_clickedElement).parent().css({position: 'relative', overflow: 'visible'}).append($ul);
           } else {
             $(event.event.currentTarget).closest('.dropdown-submenu').append($ul);
           }
@@ -417,39 +417,47 @@
             var top = "";
             var left = "";
 
-            if (event.type === 'click' || event.type === 'keypress') {
+            var winWidth = event.view.innerWidth + window.pageXOffset;
+            var windowHeight = $window.pageYOffset + event.view.innerHeight;
+
+            if (event.type === 'keypress' || event.type === 'click') {
               var elementPosition = event.currentTarget.getBoundingClientRect();
-              var windowHeight = $window.pageYOffset + event.view.innerHeight;
               var atBottom = elementPosition.bottom + $ul.height() > windowHeight;
 
               top = atBottom ? 0 - $ul.height() + 'px' : "50%";
-              left = leftOriented ? 0 - $ul.width() + 'px' : "50%";
+
+              if (leftOriented) {
+                left = 0 - $ul.width() + 'px';
+              } else {
+                var parentOffset = $ul.parent().offset();
+                var trigger = $ul.prev();
+
+                left = ((trigger.offset().left - parentOffset.left) + trigger.width()) + "px";
+              }
             } else if (event.type === 'contextmenu') {
               var topCoordinate  = event.pageY;
               var menuHeight = angular.element($ul[0]).prop('offsetHeight');
-              var winHeight = $window.pageYOffset + event.view.innerHeight;
 
                 /// the 20 pixels in second condition are considering the browser status bar that sometimes overrides the element
-                if (topCoordinate > menuHeight && winHeight - topCoordinate < menuHeight + 20) {
+                if (topCoordinate > menuHeight && windowHeight - topCoordinate < menuHeight + 20) {
                   topCoordinate = topCoordinate - menuHeight;
                   /// If the element is a nested menu, adds the height of the parent li to the topCoordinate to align with the parent
 
-                } else if(winHeight <= menuHeight) {
+                } else if(windowHeight <= menuHeight) {
                   // If it really can't fit, reset the height of the menu to one that will fit
-                  angular.element($ul[0]).css({ 'height': winHeight - 5, 'overflow-y': 'scroll' });
+                  angular.element($ul[0]).css({ 'height': windowHeight - 5, 'overflow-y': 'scroll' });
                   // ...then set the topCoordinate height to 0 so the menu starts from the top
                   topCoordinate = 0;
-                } else if(winHeight - topCoordinate < menuHeight) {
+                } else if(windowHeight - topCoordinate < menuHeight) {
                   var reduceThresholdY = 5;
                   if(topCoordinate < reduceThresholdY) {
                     reduceThresholdY = topCoordinate;
                   }
-                  topCoordinate = winHeight - menuHeight - reduceThresholdY;
+                  topCoordinate = windowHeight - menuHeight - reduceThresholdY;
                 }
 
               var leftCoordinate = event.pageX;
               var menuWidth = angular.element($ul[0]).prop('offsetWidth');
-              var winWidth = event.view.innerWidth + window.pageXOffset;
               var padding = 5;
 
               if (leftOriented) {
@@ -486,13 +494,16 @@
               var subMenu = angular.element($ul[0]);
               var parentMenu = event.event.currentTarget;
               var parentPosition = parentMenu.getBoundingClientRect();
-              var winWidth = event.view.innerWidth + window.pageXOffset;
 
-              top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight') + 5;
-              left = parentMenu.offsetWidth + parentMenu.offsetLeft + 2;
+              top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.parent().prop('offsetHeight') + 5;
+              left = parentMenu.offsetWidth + parentMenu.offsetLeft + 3;
 
-              if (winWidth - parentPosition.right < subMenu.prop('offsetWidth') || leftOriented) {
-                left = 0 - subMenu.prop('offsetWidth') - 2;
+              if (windowHeight - parentPosition.bottom < subMenu.prop('offsetHeight')) {
+                top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight');
+              }
+
+              if (leftOriented || winWidth - parentPosition.right < subMenu.prop('offsetWidth')) {
+                left = 0 - subMenu.prop('offsetWidth') - 3;
               }
             }
 
@@ -640,10 +651,6 @@
               // Cleanup any leftover contextmenus(there are cases with longpress on touch where we
               // still see multiple contextmenus)
               removeAllContextMenus();
-
-              if (event.key === 'Enter' &&  _contextMenus.length > 0) {
-                return false;
-              }
 
               if(!attrs.allowEventPropagation) {
                 event.stopPropagation();
