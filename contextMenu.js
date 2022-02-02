@@ -41,7 +41,9 @@
           var $promises = params.$promises;
           var nestedMenu = params.nestedMenu;
           var $li = params.$li;
-          var leftOriented = String(params.orientation).toLowerCase() === 'left';
+          var orientation = String(params.orientation).toLowerCase();
+          var leftOriented = orientation.includes("left");
+          var topOriented = orientation.includes("top");
 
           var optionText = null;
 
@@ -411,7 +413,9 @@
           var $ul = params.$ul;
           var $promises = params.$promises;
           var event = params.event;
-          var leftOriented = String(params.orientation).toLowerCase() === 'left';
+          var orientation = String(params.orientation).toLowerCase();
+          var leftOriented = orientation.includes("left");
+          var topOriented = orientation.includes("top");
 
           $q.all($promises).then(function () {
             var top = "";
@@ -424,7 +428,11 @@
               var elementPosition = event.currentTarget.getBoundingClientRect();
               var atBottom = elementPosition.bottom + $ul.height() > windowHeight;
 
-              top = atBottom ? 0 - $ul.height() + 'px' : "50%";
+              if (topOriented || atBottom) {
+                top = 0 - $ul.height() + 'px';
+              } else {
+                top = "50%";
+              }
 
               if (leftOriented) {
                 left = 0 - $ul.width() + 'px';
@@ -439,7 +447,7 @@
               var menuHeight = angular.element($ul[0]).prop('offsetHeight');
 
                 /// the 20 pixels in second condition are considering the browser status bar that sometimes overrides the element
-                if (topCoordinate > menuHeight && windowHeight - topCoordinate < menuHeight + 20) {
+                if ((topCoordinate > menuHeight && windowHeight - topCoordinate < menuHeight + 20) || topOriented) {
                   topCoordinate = topCoordinate - menuHeight;
                   /// If the element is a nested menu, adds the height of the parent li to the topCoordinate to align with the parent
 
