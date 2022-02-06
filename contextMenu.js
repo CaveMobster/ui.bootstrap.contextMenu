@@ -386,7 +386,8 @@
           if (event.type === 'contextmenu') {
             $document.find('body').append($ul);
           } else if (event.type === 'click' || event.type === 'keypress') {
-            $document.find(_clickedElement).parent().css({position: 'relative', overflow: 'visible'}).append($ul);
+            $document.find(_clickedElement).parent().css({position: 'relative', overflow: 'visible'});
+            $document.find(_clickedElement).after($ul);
           } else {
             $(event.event.currentTarget).closest('.dropdown-submenu').append($ul);
           }
@@ -442,7 +443,7 @@
                 var parentOffset = $ul.parent().offset();
                 var trigger = $ul.prev();
 
-                left = ((trigger.offset().left - parentOffset.left) + trigger.width()) + "px";
+                left = ((trigger.offset().left - parentOffset.left) + (trigger.width() / 2)) + "px";
               }
             } else if (event.type === 'contextmenu') {
               var topCoordinate  = event.pageY;
