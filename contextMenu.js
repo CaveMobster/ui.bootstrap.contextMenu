@@ -43,7 +43,6 @@
           var $li = params.$li;
           var orientation = String(params.orientation).toLowerCase();
           var leftOriented = orientation.includes("left");
-          var topOriented = orientation.includes("top");
 
           var optionText = null;
 
@@ -416,19 +415,22 @@
           var orientation = String(params.orientation).toLowerCase();
           var leftOriented = orientation.includes("left");
           var topOriented = orientation.includes("top");
+          var bottomOffset = params.bottomOffset;
+          var topOffset = params.topOffset;
 
           $q.all($promises).then(function () {
             var top = "";
             var left = "";
 
-            var winWidth = event.view.innerWidth + window.pageXOffset;
+            var windowWidth = event.view.innerWidth + window.pageXOffset;
             var windowHeight = $window.pageYOffset + event.view.innerHeight;
 
             if (event.type === 'keypress' || event.type === 'click') {
               var elementPosition = event.currentTarget.getBoundingClientRect();
-              var atBottom = elementPosition.bottom + $ul.height() > windowHeight;
+              var atBottom = elementPosition.bottom + $ul.height() > windowHeight - bottomOffset;
+              var atTop = elementPosition.top - $ul.height() < topOffset;
 
-              if (topOriented || atBottom) {
+              if ((topOriented && !atTop) || atBottom) {
                 top = 0 - $ul.height() + 'px';
               } else {
                 top = "50%";
@@ -469,30 +471,30 @@
               var padding = 5;
 
               if (leftOriented) {
-                if (winWidth - leftCoordinate > menuWidth && leftCoordinate < menuWidth + padding) {
+                if (windowWidth - leftCoordinate > menuWidth && leftCoordinate < menuWidth + padding) {
                   leftCoordinate = padding;
 
                 } else if (leftCoordinate < menuWidth) {
                   var reduceThresholdX = 5;
-                  if (winWidth - leftCoordinate < reduceThresholdX + padding) {
-                    reduceThresholdX = winWidth - leftCoordinate + padding;
+                  if (windowWidth - leftCoordinate < reduceThresholdX + padding) {
+                    reduceThresholdX = windowWidth - leftCoordinate + padding;
                   }
                   leftCoordinate = menuWidth + reduceThresholdX + padding;
                 } else {
                   leftCoordinate = leftCoordinate - menuWidth;
                 }
               } else {
-                if (leftCoordinate > menuWidth && winWidth - leftCoordinate - padding < menuWidth) {
-                  leftCoordinate = winWidth - menuWidth - padding;
+                if (leftCoordinate > menuWidth && windowWidth - leftCoordinate - padding < menuWidth) {
+                  leftCoordinate = windowWidth - menuWidth - padding;
 
-                } else if(winWidth - leftCoordinate < menuWidth) {
+                } else if(windowWidth - leftCoordinate < menuWidth) {
                   var reduceThresholdX = 5;
 
                   if(leftCoordinate < reduceThresholdX + padding) {
                     reduceThresholdX = leftCoordinate + padding;
                   }
 
-                  leftCoordinate = winWidth - menuWidth - reduceThresholdX - padding;
+                  leftCoordinate = windowWidth - menuWidth - reduceThresholdX - padding;
                 }
               }
 
@@ -510,7 +512,7 @@
                 top = parentMenu.offsetHeight + parentMenu.offsetTop - subMenu.prop('offsetHeight');
               }
 
-              if (leftOriented || winWidth - parentPosition.right < subMenu.prop('offsetWidth')) {
+              if (leftOriented || windowWidth - parentPosition.right < subMenu.prop('offsetWidth')) {
                 left = 0 - subMenu.prop('offsetWidth') - 3;
               }
             }
@@ -685,6 +687,8 @@
                 var customClass = attrs.contextMenuClass;
                 var modelValue = $scope.$eval(attrs.model);
                 var orientation = attrs.contextMenuOrientation;
+                var topOffset = attrs.contextMenuTopOffset ? parseInt(attrs.contextMenuTopOffset.replace("px", "")) : 0;
+                var bottomOffset = attrs.contextMenuBottomOffset ? parseInt(attrs.contextMenuBottomOffset.replace("px", "")) : 0;
 
                 $q.when(options).then(function(promisedMenu) {
                   if (angular.isFunction(promisedMenu)) {
@@ -698,7 +702,9 @@
                     'modelValue' : modelValue,
                     'level' : 0,
                     'customClass' : customClass,
-                    'orientation': orientation
+                    'orientation': orientation,
+                    'topOffset': topOffset,
+                    'bottomOffset': bottomOffset
                   };
                   $rootScope.$broadcast(ContextMenuEvents.ContextMenuOpening, { context: _clickedElement });
                   renderContextMenu(params);
