@@ -437,11 +437,11 @@
                 top = "50%";
               }
 
+              var trigger = $ul.prev();
+              var parentOffset = $ul.parent().offset();
               if (leftOriented) {
-                left = 0 - $ul.width() + 'px';
+                left = ((trigger.offset().left - parentOffset.left) - $ul.width()) + 'px';
               } else {
-                var parentOffset = $ul.parent().offset();
-                var trigger = $ul.prev();
 
                 left = ((trigger.offset().left - parentOffset.left) + (trigger.width() / 2)) + "px";
               }
