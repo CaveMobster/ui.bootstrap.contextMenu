@@ -417,14 +417,14 @@
           var leftOriented = orientation.includes("left");
           var topOriented = orientation.includes("top");
           var bottomOffset = params.bottomOffset;
-          var topOffset = params.topOffset;
+          var topOffset = params.topOffset || window.pageYOffset;
 
           $q.all($promises).then(function () {
             var top = "";
             var left = "";
 
-            var windowWidth = event.view.innerWidth + window.pageXOffset;
-            var windowHeight = $window.pageYOffset + event.view.innerHeight;
+            var windowWidth = window.pageXOffset + event.view.innerWidth;
+            var windowHeight = window.pageYOffset + event.view.innerHeight;
 
             if (event.type === 'keypress' || event.type === 'click') {
               var elementPosition = event.currentTarget.getBoundingClientRect();
